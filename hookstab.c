@@ -685,6 +685,9 @@ BOOLEAN NTAPI EtpHookTreeNewCallback(
 			{
 				gui = hookItem->origin;
 
+				if (!gui)
+					return FALSE;
+
 				PH_FORMAT format;
 				
 				PhInitFormatD(&format, gui->spi->UniqueProcessId);
@@ -697,13 +700,19 @@ BOOLEAN NTAPI EtpHookTreeNewCallback(
 			{
 				gui = hookItem->origin;
 
-				PhInitializeStringRef(&getCellText->Text, gui->spi->ImageName.Buffer);
+				if (gui)
+					PhInitializeStringRef(&getCellText->Text, gui->spi->ImageName.Buffer);
+				else
+					return FALSE;
 			}
 			break;
 
 			case ETDSTNC_PATH:
 			{
 				TCHAR filename[MAX_PATH];
+
+				if (!hookItem->origin)
+					return FALSE;
 
 				getfullpath(filename, hookItem->origin->spi->UniqueProcessId);
 
