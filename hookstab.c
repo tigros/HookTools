@@ -954,7 +954,7 @@ VOID EtHandleHookCommand(
             hookItem = EtGetSelectedHookItem();
             PPH_PROCESS_NODE processNode;
 
-            if (hookItem)
+			if (hookItem && hookItem->origin)
             {
 				if (hookItem->origin->spi->UniqueProcessId)
                 {
@@ -971,26 +971,35 @@ VOID EtHandleHookCommand(
 
 	case ID_HOOK_UNHOOK:
 		{
-			phook *hookItems;
-			ULONG numberOfHookItems;
-
-			EtGetSelectedHookItems(&hookItems, &numberOfHookItems);
-
-			for (int i = 0; i < numberOfHookItems; i++)
+			if (PhShowConfirmMessage(
+				PhMainWndHandle,
+				L"unhook",
+				L"highlighted",
+				NULL,
+				FALSE
+				))
 			{
-				BOOL res = UnhookWindowsHookEx((HHOOK)hookItems[i]->object.head.h);
+				phook *hookItems;
+				ULONG numberOfHookItems;
 
-				if (!res)
+				EtGetSelectedHookItems(&hookItems, &numberOfHookItems);
+
+				for (int i = 0; i < numberOfHookItems; i++)
 				{
-					wchar_t buf[256];
-					FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(),
-						MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), buf, 256, NULL);
+					BOOL res = UnhookWindowsHookEx((HHOOK)hookItems[i]->object.head.h);
 
-					PhShowMessage(HookTreeNewHandle, MB_ICONERROR | MB_OK, L"An error occurred: %s", buf);
+					if (!res)
+					{
+						wchar_t buf[256];
+						FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(),
+							MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), buf, 256, NULL);
+
+						PhShowMessage(HookTreeNewHandle, MB_ICONERROR | MB_OK, L"An error occurred: %s", buf);
+					}
 				}
-			}
 
-			PhFree(hookItems);
+				PhFree(hookItems);
+			}
 		}
 		break;
 
@@ -998,7 +1007,7 @@ VOID EtHandleHookCommand(
         {
 			hookItem = EtGetSelectedHookItem();
 
-            if (hookItem)
+			if (hookItem && hookItem->origin)
             {
 				getfullpath(filename, hookItem->origin->spi->UniqueProcessId);
 				PhShellExploreFile(PhMainWndHandle, filename);  
@@ -1014,7 +1023,7 @@ VOID EtHandleHookCommand(
         {
             hookItem = EtGetSelectedHookItem();
 
-            if (hookItem)
+			if (hookItem && hookItem->origin)
             {
 				getfullpath(filename, hookItem->origin->spi->UniqueProcessId);
                 PhShellProperties(PhMainWndHandle, filename);
@@ -1036,7 +1045,7 @@ VOID EtpInitializeHookMenu(
     {
         PhSetFlagsAllEMenuItems(Menu, PH_EMENU_DISABLED, PH_EMENU_DISABLED);
     }
-    else if (NumberOfHookItems > 1)
+	else if (NumberOfHookItems > 1 || !HookItems[0]->origin)
     {
         PhSetFlagsAllEMenuItems(Menu, PH_EMENU_DISABLED, PH_EMENU_DISABLED);
         PhEnableEMenuItem(Menu, ID_HOOK_COPY, TRUE);
@@ -1164,7 +1173,6 @@ INT_PTR CALLBACK EtpHookTabErrorDialogProc(
 
 void clearallrows()
 {
-	struct hook *hookItem = NULL;
 	ULONG i;
 
 	while (HookNodeList->Count > 0)
