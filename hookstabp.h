@@ -156,9 +156,12 @@ VOID EtLoadSettingsHookTreeList(
 	VOID
 	);
 
-HWND NTAPI EtpHookTabCreateFunction(
-    _In_ PVOID Context
-    );
+BOOLEAN EtpHookPageCallback(
+	_In_ struct _PH_MAIN_TAB_PAGE *Page,
+	_In_ PH_MAIN_TAB_PAGE_MESSAGE Message,
+	_In_opt_ PVOID Parameter1,
+	_In_opt_ PVOID Parameter2
+);
 
 VOID NTAPI EtpHookTabSelectionChangedCallback(
     _In_ PVOID Parameter1,
@@ -298,6 +301,11 @@ VOID NTAPI EtpOnHookItemsUpdated(
     _In_ PVOID Parameter
     );
 
+VOID EtWriteDiskList(
+	_Inout_ PPH_FILE_STREAM FileStream,
+	_In_ ULONG Mode
+);
+
 VOID NTAPI EtpSearchChangedHandler(
     _In_opt_ PVOID Parameter,
     _In_opt_ PVOID Context
@@ -311,6 +319,10 @@ BOOLEAN NTAPI EtpSearchHookListFilterCallback(
 VOID NTAPI EtpToolStatusActivateContent(
     _In_ BOOLEAN Select
     );
+
+HWND NTAPI EtpToolStatusGetTreeNewHandle(
+	VOID
+);
 
 INT_PTR CALLBACK EtpHookTabErrorDialogProc(
     _In_ HWND hwndDlg,

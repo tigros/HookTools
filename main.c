@@ -172,7 +172,7 @@ LOGICAL DllMain(
             info->Author = L"colin";
             info->Description = L"Hook Tools";
             info->Url = L"http://processhacker.sf.net";
-            info->HasOptions = TRUE;
+            info->HasOptions = FALSE;
 
             PhRegisterCallback(
                 PhGetPluginCallback(PluginInstance, PluginCallbackLoad),
@@ -186,12 +186,12 @@ LOGICAL DllMain(
                 NULL,
                 &PluginUnloadCallbackRegistration
                 );
-            PhRegisterCallback(
-                PhGetPluginCallback(PluginInstance, PluginCallbackShowOptions),
-                ShowOptionsCallback,
-                NULL,
-                &PluginShowOptionsCallbackRegistration
-                );
+            //PhRegisterCallback(
+            //    PhGetPluginCallback(PluginInstance, PluginCallbackShowOptions),
+            //    ShowOptionsCallback,
+            //    NULL,
+            //    &PluginShowOptionsCallbackRegistration
+            //    );
             PhRegisterCallback(
                 PhGetPluginCallback(PluginInstance, PluginCallbackMenuItem),
                 MenuItemCallback,
@@ -211,12 +211,12 @@ LOGICAL DllMain(
                 NULL,
                 &MainWindowShowingCallbackRegistration
                 );
-            PhRegisterCallback(
-                PhGetGeneralCallback(GeneralCallbackProcessPropertiesInitializing),
-                ProcessPropertiesInitializingCallback,
-                NULL,
-                &ProcessPropertiesInitializingCallbackRegistration
-                );
+            //PhRegisterCallback(
+            //    PhGetGeneralCallback(GeneralCallbackProcessPropertiesInitializing),
+            //    ProcessPropertiesInitializingCallback,
+            //    NULL,
+            //    &ProcessPropertiesInitializingCallbackRegistration
+            //    );
             PhRegisterCallback(
                 PhGetGeneralCallback(GeneralCallbackHandlePropertiesInitializing),
                 HandlePropertiesInitializingCallback,
