@@ -5,4 +5,4 @@ Grab the Process Hacker source and compile it, then add HookTools.vcxproj to Plu
 
 This project is based on https://github.com/jay/gethooks.git
 
-Windows 7 x64 required, will not work on Windows 8/10, would be great if someone finds the solution, GetProcAddress(LoadLibraryA("user32"), "gSharedInfo") doesn't work in those OS's.
+As of 2017/02/22 should work on Windows 8.1/10. 64 bit only. Notice the PH V3 branch also.
