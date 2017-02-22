@@ -117,14 +117,14 @@ x86 only, for now.
 */
 SHAREDINFO *get_SharedInfo( void )
 {
-	static DWORD SharedInfo;
+	static SHAREDINFO *SharedInfo;
 	int i = 0;
 	char *p = NULL;
 	void *User32InitializeImmEntryTable = NULL;
 	
 	
 	if( SharedInfo )
-		return (SHAREDINFO *)SharedInfo;
+		return SharedInfo;
 	/*
 #ifdef _MSC_VER
 #pragma warning(push)  
@@ -170,7 +170,7 @@ SHAREDINFO *get_SharedInfo( void )
 	*/
 
 	// (Process Hacker) Replaces above but doesn't work on Windows 8/10, feel free to find a solution, good luck! It is the remaining big problem.
-	SharedInfo = (DWORD)GetProcAddress(LoadLibraryA("user32"), "gSharedInfo");
+	SharedInfo = (SHAREDINFO *)GetProcAddress(LoadLibraryA("user32"), "gSharedInfo");
 
 	if( !SharedInfo )
 	{
@@ -178,7 +178,7 @@ SHAREDINFO *get_SharedInfo( void )
 		exit( 1 );
 	}
 	
-	return (SHAREDINFO *)SharedInfo;
+	return SharedInfo;
 }
 
 
@@ -206,7 +206,6 @@ void init_global_prog_store(
 	is initialized.
 	*/
 	G->prog->pSharedInfo = get_SharedInfo();
-	
 	
 	G->prog->argc = argc;
 	G->prog->argv = argv;
