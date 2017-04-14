@@ -168,8 +168,7 @@ SHAREDINFO *get_SharedInfo( void )
 		}
 	}
 	*/
-
-	// (Process Hacker) Replaces above but doesn't work on Windows 8/10, feel free to find a solution, good luck! It is the remaining big problem.
+	
 	SharedInfo = (SHAREDINFO *)GetProcAddress(LoadLibraryA("user32"), "gSharedInfo");
 
 	if( !SharedInfo )
