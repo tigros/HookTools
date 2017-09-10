@@ -95,8 +95,11 @@ typedef struct _ET_DISK_NODE
 #define ETHKTNC_TYPE 0
 #define ETHKTNC_PID 1
 #define ETHKTNC_PROCESS 2
-#define ETHKTNC_FLAGS 3
 #define ETHKTNC_PATH 4
+#define ETHKTNC_STARTTIME 5
+#define ETHKTNC_RELATIVESTARTTIME 6
+#define ETHKTNC_FLAGS 3
+#define ETHKTNC_MAXIMUM 7
 
 typedef struct _ET_HOOK_ITEM
 {
