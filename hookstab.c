@@ -21,8 +21,6 @@
  */
 
 #include "exttools.h"
-#include "resource.h"
-#include <colmgr.h>
 #include <toolstatusintf.h>
 #include "hookstabp.h"
 #include "gethooks.h"
@@ -32,6 +30,7 @@
 BOOLEAN HookTreeNewCreated = FALSE;
 HWND HookTreeNewHandle;
 
+static PPH_MAIN_TAB_PAGE HookPage;
 static ULONG HookTreeNewSortColumn;
 static PH_SORT_ORDER HookTreeNewSortOrder;
 
@@ -87,6 +86,8 @@ typedef struct _WE_HOOK_NODE
 	PPH_STRING flagstext;
 	PPH_STRING pidtext;
 	PPH_STRING pidpath;
+    PPH_STRING StartTimeText;
+    PPH_STRING RelativeStartTimeText;
 
 	struct hook ahook;
 
@@ -120,8 +121,7 @@ VOID EtInitializeHooksTab(
     VOID
     )
 {
-    PH_ADDITIONAL_TAB_PAGE tabPage;
-    PPH_ADDITIONAL_TAB_PAGE addedTabPage;
+	PH_MAIN_TAB_PAGE page;
     PPH_PLUGIN toolStatusPlugin;
 
     if (toolStatusPlugin = PhFindPlugin(TOOLSTATUS_PLUGIN_NAME))
@@ -132,58 +132,100 @@ VOID EtInitializeHooksTab(
             ToolStatusInterface = NULL;
     }
 
-    memset(&tabPage, 0, sizeof(PH_ADDITIONAL_TAB_PAGE));
-    tabPage.Text = L"Hooks";
-    tabPage.CreateFunction = EtpHookTabCreateFunction;
-    tabPage.Index = MAXINT;
-    tabPage.SelectionChangedCallback = EtpHookTabSelectionChangedCallback;
-    tabPage.SaveContentCallback = EtpHookTabSaveContentCallback;
-    tabPage.FontChangedCallback = EtpHookTabFontChangedCallback;
-    addedTabPage = ProcessHacker_AddTabPage(PhMainWndHandle, &tabPage);
+	memset(&page, 0, sizeof(PH_MAIN_TAB_PAGE));
+	PhInitializeStringRef(&page.Name, L"Hooks");
+	page.Callback = EtpHookPageCallback;
+	HookPage = ProcessHacker_CreateTabPage(PhMainWndHandle, &page);
 
     if (ToolStatusInterface)
     {
         PTOOLSTATUS_TAB_INFO tabInfo;
+		
+		tabInfo = ToolStatusInterface->RegisterTabInfo(HookPage->Index);
+		tabInfo->BannerText = L"Search Hooks";
+		tabInfo->ActivateContent = EtpToolStatusActivateContent;
+		tabInfo->GetTreeNewHandle = EtpToolStatusGetTreeNewHandle;
 
-        tabInfo = ToolStatusInterface->RegisterTabInfo(addedTabPage->Index);
-        tabInfo->BannerText = L"Search Hooks";
-        tabInfo->ActivateContent = EtpToolStatusActivateContent;
     }
 }
 
-HWND NTAPI EtpHookTabCreateFunction(
-    _In_ PVOID Context
-    )
+HWND NTAPI EtpToolStatusGetTreeNewHandle(
+	VOID
+)
 {
-    HWND hwnd;
+	return HookTreeNewHandle;
+}
 
-	ULONG thinRows;
+BOOLEAN NTAPI EtpHookPageCallback(
+	_In_ struct _PH_MAIN_TAB_PAGE *Page,
+	_In_ PH_MAIN_TAB_PAGE_MESSAGE Message,
+	_In_opt_ PVOID Parameter1,
+	_In_opt_ PVOID Parameter2
+)
+{
+	switch (Message)
+	{
+	case MainTabPageCreateWindow:
+	{
+		HWND hwnd;
 
-	thinRows = PhGetIntegerSetting(L"ThinRows") ? TN_STYLE_THIN_ROWS : 0;
-	hwnd = CreateWindow(
-		PH_TREENEW_CLASSNAME,
-		NULL,
-		WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_BORDER | TN_STYLE_ICONS | TN_STYLE_DOUBLE_BUFFERED | thinRows,
-		0,
-		0,
-		3,
-		3,
-		PhMainWndHandle,
-		NULL,
-		PluginInstance->DllBase,
-		NULL
+		ULONG thinRows;
+
+		thinRows = PhGetIntegerSetting(L"ThinRows") ? TN_STYLE_THIN_ROWS : 0;
+		hwnd = CreateWindow(
+			PH_TREENEW_CLASSNAME,
+			NULL,
+			WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_BORDER | TN_STYLE_ICONS | TN_STYLE_DOUBLE_BUFFERED | thinRows,
+			0,
+			0,
+			3,
+			3,
+			PhMainWndHandle,
+			NULL,
+			NULL,
+			NULL
 		);
 
-	if (!hwnd)
-		return NULL;
+		if (!hwnd)
+			return FALSE;
 
-	HookNodeList = PhCreateList(100);
+		HookNodeList = PhCreateList(100);
 
-	EtInitializeHookTreeList(hwnd);
+		EtInitializeHookTreeList(hwnd);
 
-	HookTreeNewCreated = TRUE;
+		HookTreeNewCreated = TRUE;
 
-    return hwnd;
+		*(HWND *)Parameter1 = hwnd;
+	}
+	return TRUE;
+	case MainTabPageLoadSettings:
+	{
+		// Nothing
+	}
+	return TRUE;
+	case MainTabPageSaveSettings:
+	{
+		// Nothing
+	}
+	return TRUE;
+	case MainTabPageExportContent:
+	{
+		PPH_MAIN_TAB_PAGE_EXPORT_CONTENT exportContent = Parameter1;
+
+		EtWriteDiskList(exportContent->FileStream, exportContent->Mode);
+	}
+	return TRUE;
+	case MainTabPageFontChanged:
+	{
+		HFONT font = (HFONT)Parameter1;
+
+		if (HookTreeNewHandle)
+			SendMessage(HookTreeNewHandle, WM_SETFONT, (WPARAM)Parameter1, TRUE);
+	}
+	break;
+	}
+
+	return FALSE;
 }
 
 VOID NTAPI EtpHookTabSelectionChangedCallback(
@@ -298,6 +340,19 @@ VOID WepAddChildHookNode(
 		childNode->Node.Visible = PhApplyTreeNewFiltersToNode(&FilterSupport, &childNode->Node);
 }
 
+BOOL GetProcessCreationTime(DWORD dwProcessId, LPFILETIME CreationTime)
+{
+    BOOL bResult = FALSE;
+    HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, dwProcessId);
+    if (hProcess)
+    {
+        FILETIME Ignore;
+        bResult = GetProcessTimes(hProcess, CreationTime, &Ignore, &Ignore, &Ignore);
+        CloseHandle(hProcess);
+    }
+    return bResult;
+}
+
 VOID WepAddHooks(
 	_In_ PPH_TREENEW_CONTEXT Context
 	)
@@ -341,8 +396,10 @@ VOID EtInitializeHookTreeList(
 	PhAddTreeNewColumn(hwnd, ETHKTNC_TYPE, TRUE, L"Type", 130, PH_ALIGN_LEFT, 0, 0);
 	PhAddTreeNewColumn(hwnd, ETHKTNC_PROCESS, TRUE, L"Process", 130, PH_ALIGN_LEFT, 1, DT_PATH_ELLIPSIS);
 	PhAddTreeNewColumn(hwnd, ETHKTNC_PATH, TRUE, L"Path", 700, PH_ALIGN_LEFT, 2, DT_PATH_ELLIPSIS);
-	PhAddTreeNewColumn(hwnd, ETHKTNC_PID, TRUE, L"PID", 100, PH_ALIGN_RIGHT, 3, DT_RIGHT);
-	PhAddTreeNewColumn(hwnd, ETHKTNC_FLAGS, TRUE, L"Flags", 800, PH_ALIGN_LEFT, 4, 0);
+    PhAddTreeNewColumnEx(hwnd, ETHKTNC_STARTTIME, TRUE, L"Start time", 100, PH_ALIGN_LEFT, 3, 0, TRUE);
+    PhAddTreeNewColumn(hwnd, ETHKTNC_RELATIVESTARTTIME, FALSE, L"Relative start time", 180, PH_ALIGN_LEFT, 4, 0);
+	PhAddTreeNewColumn(hwnd, ETHKTNC_PID, TRUE, L"PID", 100, PH_ALIGN_RIGHT, 5, DT_RIGHT);
+	PhAddTreeNewColumn(hwnd, ETHKTNC_FLAGS, TRUE, L"Flags", 800, PH_ALIGN_LEFT, 6, 0);
 
 	TreeNew_SetRedraw(hwnd, TRUE);
 
@@ -367,12 +424,9 @@ VOID EtLoadSettingsHookTreeList(
     VOID
     )
 {
-    PPH_STRING settings;
     PH_INTEGER_PAIR sortSettings;
 
-    settings = PhGetStringSetting(SETTING_NAME_HOOK_TREE_LIST_COLUMNS);
-    PhCmLoadSettings(HookTreeNewHandle, &settings->sr);
-    PhDereferenceObject(settings);
+	PhCmLoadSettings(HookTreeNewHandle, &PhaGetStringSetting(SETTING_NAME_HOOK_TREE_LIST_COLUMNS)->sr);
 
     sortSettings = PhGetIntegerPairSetting(SETTING_NAME_HOOK_TREE_LIST_SORT);
     TreeNew_SetSort(HookTreeNewHandle, (ULONG)sortSettings.X, (PH_SORT_ORDER)sortSettings.Y);
@@ -390,9 +444,8 @@ VOID EtSaveSettingsHookTreeList(
     if (!HookTreeNewCreated)
         return;
 
-    settings = PhCmSaveSettings(HookTreeNewHandle);
-    PhSetStringSetting2(SETTING_NAME_HOOK_TREE_LIST_COLUMNS, &settings->sr);
-    PhDereferenceObject(settings);
+	settings = PH_AUTO(PhCmSaveSettings(HookTreeNewHandle));
+	PhSetStringSetting2(SETTING_NAME_HOOK_TREE_LIST_COLUMNS, &settings->sr);
 
     TreeNew_GetSort(HookTreeNewHandle, &sortColumn, &sortOrder);
     sortSettings.X = sortColumn;
@@ -412,6 +465,8 @@ VOID EtRemoveHookNode(
     if (HookNode->flagstext) PhDereferenceObject(HookNode->flagstext);
     if (HookNode->pidpath) PhDereferenceObject(HookNode->pidpath);
     if (HookNode->pidtext) PhDereferenceObject(HookNode->pidtext);
+    if (HookNode->StartTimeText) PhDereferenceObject(HookNode->StartTimeText);
+    if (HookNode->RelativeStartTimeText) PhDereferenceObject(HookNode->RelativeStartTimeText);
 
     PhFree(HookNode);
 }
@@ -542,6 +597,37 @@ BEGIN_SORT_FUNCTION(PID)
 }
 END_SORT_FUNCTION
 
+int starttimecmp(HANDLE p1, HANDLE p2)
+{
+    LARGE_INTEGER CreationTime1;
+    LARGE_INTEGER CreationTime2;
+    if (GetProcessCreationTime(p1, &CreationTime1) &&
+        GetProcessCreationTime(p2, &CreationTime2))
+    {
+        return int64cmp(CreationTime1.QuadPart, CreationTime2.QuadPart);
+    }
+
+    return 0;
+}
+
+BEGIN_SORT_FUNCTION(StartTime)
+{
+    if (hookItem1->origin && hookItem2->origin)
+    {
+        sortResult = starttimecmp(hookItem1->origin->spi->UniqueProcessId, hookItem2->origin->spi->UniqueProcessId);
+    }
+}
+END_SORT_FUNCTION
+
+BEGIN_SORT_FUNCTION(RelativeStartTime)
+{
+    if (hookItem1->origin && hookItem2->origin)
+    {
+        sortResult = -starttimecmp(hookItem1->origin->spi->UniqueProcessId, hookItem2->origin->spi->UniqueProcessId);
+    }
+}
+END_SORT_FUNCTION
+
 void getflags(WCHAR *buf, DWORD flags)
 {
 
@@ -631,11 +717,13 @@ BOOLEAN NTAPI EtpHookTreeNewCallback(
                     SORT_FUNCTION(PID),
                     SORT_FUNCTION(Process),
                     SORT_FUNCTION(FLAGS),
-					SORT_FUNCTION(Path)
+					SORT_FUNCTION(Path),
+                    SORT_FUNCTION(StartTime),
+                    SORT_FUNCTION(RelativeStartTime)
                 };
                 int (__cdecl *sortFunction)(const void *, const void *);
 
-                if (HookTreeNewSortColumn < ETDSTNC_MAXIMUM)
+                if (HookTreeNewSortColumn < ETHKTNC_MAXIMUM)
                     sortFunction = sortFunctions[HookTreeNewSortColumn];
                 else
                     sortFunction = NULL;
@@ -668,7 +756,7 @@ BOOLEAN NTAPI EtpHookTreeNewCallback(
 
             switch (getCellText->Id)
             {
-			case ETDSTNC_TYPE:
+			case ETHKTNC_TYPE:
 			{
 
 				const unsigned index = (unsigned)(hookItem->object.iHook + 1);
@@ -681,7 +769,7 @@ BOOLEAN NTAPI EtpHookTreeNewCallback(
 			}
             break;
 
-			case ETDSTNC_PID:
+			case ETHKTNC_PID:
 			{
 				gui = hookItem->origin;
 
@@ -696,7 +784,7 @@ BOOLEAN NTAPI EtpHookTreeNewCallback(
 			}
             break;
 
-			case ETDSTNC_PROCESS:
+			case ETHKTNC_PROCESS:
 			{
 				gui = hookItem->origin;
 
@@ -707,7 +795,7 @@ BOOLEAN NTAPI EtpHookTreeNewCallback(
 			}
 			break;
 
-			case ETDSTNC_PATH:
+			case ETHKTNC_PATH:
 			{
 				TCHAR filename[MAX_PATH];
 
@@ -725,7 +813,7 @@ BOOLEAN NTAPI EtpHookTreeNewCallback(
 			}
             break;
 			
-			case ETDSTNC_FLAGS:
+			case ETHKTNC_FLAGS:
 			{
 				WCHAR buf[255];
 
@@ -737,6 +825,47 @@ BOOLEAN NTAPI EtpHookTreeNewCallback(
 				PhMoveReference(&node->flagstext, PhFormat(&format, 1, 0));
 				getCellText->Text = node->flagstext->sr;
 			}
+            break;
+
+            case ETHKTNC_STARTTIME:
+            {
+                gui = hookItem->origin;
+
+                if (!gui)
+                    return FALSE;
+
+                LARGE_INTEGER CreationTime;
+                if (GetProcessCreationTime(gui->spi->UniqueProcessId, &CreationTime))
+                {
+                    SYSTEMTIME systemTime;
+
+                    PhLargeIntegerToLocalSystemTime(&systemTime, &CreationTime);
+                    PhMoveReference(&node->StartTimeText, PhFormatDateTime(&systemTime));
+                    getCellText->Text = node->StartTimeText->sr;
+                }
+            }
+            break;
+
+            case ETHKTNC_RELATIVESTARTTIME:
+            {
+                gui = hookItem->origin;
+
+                if (!gui)
+                    return FALSE;
+
+                LARGE_INTEGER CreationTime;
+                if (GetProcessCreationTime(gui->spi->UniqueProcessId, &CreationTime))
+                {
+                    LARGE_INTEGER currentTime;
+                    PPH_STRING startTimeString;
+
+                    PhQuerySystemTime(&currentTime);
+                    startTimeString = PhFormatTimeSpanRelative(currentTime.QuadPart - CreationTime.QuadPart);
+                    PhMoveReference(&node->RelativeStartTimeText, PhConcatStrings2(startTimeString->Buffer, L" ago"));
+                    PhDereferenceObject(startTimeString);
+                    getCellText->Text = node->RelativeStartTimeText->sr;
+                } 
+            }
             break;
 
             default:
@@ -1093,7 +1222,7 @@ VOID EtShowHookContextMenu(
     PhFree(hookItems);
 }
 
-static VOID NTAPI EtpSearchChangedHandler(
+VOID NTAPI EtpSearchChangedHandler(
     _In_opt_ PVOID Parameter,
     _In_opt_ PVOID Context
     )
@@ -1101,7 +1230,7 @@ static VOID NTAPI EtpSearchChangedHandler(
     PhApplyTreeNewFilters(&FilterSupport);
 }
 
-static BOOLEAN NTAPI EtpSearchHookListFilterCallback(
+BOOLEAN NTAPI EtpSearchHookListFilterCallback(
     _In_ PPH_TREENEW_NODE Node,
     _In_opt_ PVOID Context
     )
