@@ -1237,13 +1237,16 @@ BOOLEAN NTAPI EtpSearchHookListFilterCallback(
 {
     PWE_HOOK_NODE hookNode = (PWE_HOOK_NODE)Node;
     PTOOLSTATUS_WORD_MATCH wordMatch = ToolStatusInterface->WordMatch;
-	struct hook *hookItem;
+	struct hook *hookItem = NULL;
 	PH_STRINGREF sr;
 
-	hookItem = &hookNode->ahook;
+    hookItem = &hookNode->ahook;
 
     if (PhIsNullOrEmptyString(ToolStatusInterface->GetSearchboxText()))
         return TRUE;
+
+    if (!hookItem || !hookItem->origin)
+        return FALSE;
 
 	PhInitializeStringRef(&sr, hookItem->origin->spi->ImageName.Buffer);
 
