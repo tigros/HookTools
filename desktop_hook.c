@@ -460,7 +460,7 @@ returns -1 if p1's entry is less than p2's entry
 returns 1 if p1's entry is greater than p2's entry
 returns 0 if p1's entry is the same as p2's entry
 */
-int compare_hook( 
+int __cdecl compare_hook( 
 	const void *const p1,   // in
 	const void *const p2   // in
 )

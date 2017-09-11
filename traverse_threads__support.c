@@ -323,7 +323,7 @@ TRAVERSE_FLAG_EXTENDED then any available extended members.
 this function requires cb_param to point to a DWORD containing the 
 operating system version returned by GetVersion().
 */
-int callback_print_thread_state( 
+int __cdecl callback_print_thread_state( 
 	void *cb_param,   // in, out, optional
 	SYSTEM_PROCESS_INFORMATION *const spi,   // in
 	SYSTEM_THREAD_INFORMATION *const sti,   // in, optional

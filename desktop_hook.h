@@ -160,7 +160,7 @@ int is_hook_wanted(
 	const struct hook *const hook   // in
 );
 
-int compare_hook( 
+int __cdecl compare_hook( 
 	const void *const p1,   // in
 	const void *const p2   // in
 );

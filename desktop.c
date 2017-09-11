@@ -249,17 +249,33 @@ static int attach(
 		goto fail;
 	}
 	
+#ifdef _M_IX86 
+    d->pvWin32ClientInfo = (void *)((char *)d->pvTeb + 0x6cc);
+#else
+    //else
+    d->pvWin32ClientInfo = (void *)((char *)d->pvTeb + 0x800);
+#endif
+
+    /* offsetof( struct CLIENTINFO, pDeskInfo ) */
+    if ((G->prog->dwOSMajorVersion == 5) && (G->prog->dwOSMinorVersion == 0)) // win2k
+        offsetof_pDeskInfo = 20;
+    else // XP+
+#ifdef _M_IX86 
+        offsetof_pDeskInfo = 24;
+#else
+        offsetof_pDeskInfo = 32;
+#endif
 	
 	/* Get the pointer to the CLIENTINFO struct. &TEB.Win32ClientInfo */
 	//d->pvWin32ClientInfo = (void *)( (char *)d->pvTeb + 0x6cc );
-	d->pvWin32ClientInfo = (void *)((char *)d->pvTeb + 0x800);
+	//d->pvWin32ClientInfo = (void *)((char *)d->pvTeb + 0x800);
 	
 	
-	/* offsetof( struct CLIENTINFO, pDeskInfo ) */
+	/* offsetof( struct CLIENTINFO, pDeskInfo ) 
 	if( ( G->prog->dwOSMajorVersion == 5 ) && ( G->prog->dwOSMinorVersion == 0 ) ) // win2k
 		offsetof_pDeskInfo = 20;
 	else // XP+
-		offsetof_pDeskInfo = 32;
+		offsetof_pDeskInfo = 32; */
 	
 	/* Get the pointer to the DESKTOPINFO struct.
 	(char *)&TEB.Win32ClientInfo + offsetof(struct CLIENTINFO, pDeskInfo ).

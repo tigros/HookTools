@@ -95,7 +95,7 @@ void *copy_teb(
 	const DWORD flags   // in, optional
 );
 
-int callback_print_thread_state( 
+int __cdecl callback_print_thread_state( 
 	void *cb_param,   // in, out, optional
 	SYSTEM_PROCESS_INFORMATION *const spi,   // in
 	SYSTEM_THREAD_INFORMATION *const sti,   // in, optional

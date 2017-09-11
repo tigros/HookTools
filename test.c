@@ -605,7 +605,7 @@ traverse_threads() callback: this function is called for every SYSTEM_THREAD_INF
 
 The behavior of a traverse_threads() callback is documented in traverse_threads.txt.
 */
-static int callback_get_pid_from_tid( 
+static int __cdecl callback_get_pid_from_tid( 
 	void *cb_param,   // in, out, optional
 	SYSTEM_PROCESS_INFORMATION *const spi,   // in
 	SYSTEM_THREAD_INFORMATION *const sti,   // in, optional
