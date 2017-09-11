@@ -156,7 +156,7 @@ VOID EtLoadSettingsHookTreeList(
 	VOID
 	);
 
-BOOLEAN EtpHookPageCallback(
+BOOLEAN NTAPI EtpHookPageCallback(
 	_In_ struct _PH_MAIN_TAB_PAGE *Page,
 	_In_ PH_MAIN_TAB_PAGE_MESSAGE Message,
 	_In_opt_ PVOID Parameter1,

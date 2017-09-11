@@ -127,7 +127,7 @@ Free a snapshot store and all its descendants.
 
 
 
-static int callback_add_gui( 
+static int __cdecl callback_add_gui( 
 	void *cb_param,   // in, out
 	SYSTEM_PROCESS_INFORMATION *const spi,   // in
 	SYSTEM_THREAD_INFORMATION *const sti,   // in
@@ -135,7 +135,7 @@ static int callback_add_gui(
 	const DWORD flags   // in, optional
 );
 
-static int compare_gui( 
+static int __cdecl compare_gui( 
 	const void *const p1,   // in
 	const void *const p2   // in
 );
@@ -296,7 +296,7 @@ This function uses x86 offsets only, it will have to be fixed for x64.
 
 The behavior of a traverse_threads() callback is documented in traverse_threads.txt.
 */
-static int callback_add_gui( 
+static int __cdecl callback_add_gui( 
 	void *cb_param,   // in, out
 	SYSTEM_PROCESS_INFORMATION *const spi,   // in
 	SYSTEM_THREAD_INFORMATION *const sti,   // in
@@ -534,7 +534,7 @@ returns -1 if 'p1' Win32ThreadInfo < 'p2' Win32ThreadInfo
 returns 1 if 'p1' Win32ThreadInfo > 'p2' Win32ThreadInfo
 returns 0 if 'p1' Win32ThreadInfo == 'p2' Win32ThreadInfo
 */
-static int compare_gui( 
+static int __cdecl compare_gui( 
 	const void *const p1,   // in
 	const void *const p2   // in
 )
