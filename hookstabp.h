@@ -4,6 +4,7 @@
 #include "treenew.h"
 
 extern BOOLEAN HookTreeNewCreated;
+extern BOOLEAN WinVerOK;
 extern HWND HookTreeNewHandle;
 
 typedef struct _PH_TREENEW_CONTEXT
@@ -146,7 +147,7 @@ typedef struct _PH_TREENEW_CONTEXT
 	PH_STRINGREF EmptyText;
 } PH_TREENEW_CONTEXT, *PPH_TREENEW_CONTEXT;
 
-void clearallrows();
+void refill();
 
 VOID WepAddHooks(
 	_In_ PPH_TREENEW_CONTEXT Context

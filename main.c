@@ -536,21 +536,9 @@ static VOID NTAPI ProcessesUpdatedCallback(
     _In_opt_ PVOID Context
     )
 {
-	if (HookTreeNewCreated && Isdiffhooks())
+	if (HookTreeNewCreated && IsWindowVisible(HookTreeNewHandle) && WinVerOK && Isdiffhooks())
 	{
-		PPH_TREENEW_CONTEXT context;
-
-		context = (PPH_TREENEW_CONTEXT)GetWindowLongPtr(HookTreeNewHandle, 0);
-
-		TreeNew_SetRedraw(HookTreeNewHandle, FALSE);
-
-		clearallrows();
-
-		WepAddHooks(context);
-
-		TreeNew_NodesStructured(HookTreeNewHandle);
-
-		TreeNew_SetRedraw(HookTreeNewHandle, TRUE);
+        refill();
 	}
 }
 

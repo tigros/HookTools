@@ -208,6 +208,13 @@ BOOLEAN NTAPI EtpHookPageCallback(
 		// Nothing
 	}
 	return TRUE;
+    case MainTabPageSelected:
+	if (HookTreeNewCreated && !IsWindowVisible(HookTreeNewHandle) && WinVerOK && Isdiffhooks())
+	{
+        refill();
+	}
+	return TRUE;
+
 	case MainTabPageExportContent:
 	{
 		PPH_MAIN_TAB_PAGE_EXPORT_CONTENT exportContent = Parameter1;
@@ -1316,4 +1323,21 @@ void clearallrows()
 		}
 	}
 
+}
+
+void refill()
+{
+    PPH_TREENEW_CONTEXT context;
+
+    context = (PPH_TREENEW_CONTEXT)GetWindowLongPtr(HookTreeNewHandle, 0);
+
+    TreeNew_SetRedraw(HookTreeNewHandle, FALSE);
+
+    clearallrows();
+
+    WepAddHooks(context);
+
+    TreeNew_NodesStructured(HookTreeNewHandle);
+
+    TreeNew_SetRedraw(HookTreeNewHandle, TRUE);
 }
