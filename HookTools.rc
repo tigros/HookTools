@@ -49,8 +49,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,17,0,0
- PRODUCTVERSION 1,17,0,0
+ FILEVERSION 1,18,0,0
+ PRODUCTVERSION 1,18,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -67,12 +67,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "colin"
             VALUE "FileDescription", "Hook Tools plugin for Process Hacker"
-            VALUE "FileVersion", "1.17.0.0"
+            VALUE "FileVersion", "1.18.0.0"
             VALUE "InternalName", "HookTools"
             VALUE "LegalCopyright", "Licensed under the GNU GPL, v3."
             VALUE "OriginalFilename", "HookTools.dll"
             VALUE "ProductName", "Hook Tools plugin for Process Hacker"
-            VALUE "ProductVersion", "1.17.0.0"
+            VALUE "ProductVersion", "1.18.0.0"
         END
     END
     BLOCK "VarFileInfo"

@@ -117,7 +117,7 @@ Free a desktop store and all its descendants.
 /* the global stores */
 #include "global.h"
 
-
+BOOLEAN WinVerOK = FALSE;
 
 static int attach( 
 	struct desktop_item *d   // in, out
@@ -321,10 +321,12 @@ static int attach(
 			PRINT_HEX( d->pDeskInfo->pvDesktopBase );
 			PRINT_HEX( d->pDeskInfo->pvDesktopLimit );
 		}
-		
+
+        PhShowMessage(NULL, MB_ICONERROR | MB_OK, L"HookTools does not yet support this version of Windows!");
 		goto fail;
 	}
 	
+	WinVerOK = TRUE;
 	return 1;
 	
 fail:
@@ -797,7 +799,7 @@ void init_global_desktop_store( void )
 		{
 			MSG_FATAL( "add_all_desktops() failed." );
 			printf( "Couldn't add any desktops.\n" );
-			exit( 1 );
+			//exit( 1 );
 		}
 	}
 	/* 

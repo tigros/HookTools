@@ -195,10 +195,10 @@ VOID NTAPI EtpHookTabSelectionChangedCallback(
     _In_ PVOID Context
     )
 {
-    if ((BOOLEAN)Parameter1)
+    if (HookTreeNewCreated && (BOOLEAN)Parameter1 && WinVerOK && Isdiffhooks())
     {
-        if (HookTreeNewHandle)
-            SetFocus(HookTreeNewHandle);
+        refill();
+        SetFocus(HookTreeNewHandle);
     }
 }
 
@@ -1280,4 +1280,21 @@ void clearallrows()
 		}
 	}
 
+}
+
+void refill()
+{
+    PPH_TREENEW_CONTEXT context;
+
+    context = (PPH_TREENEW_CONTEXT)GetWindowLongPtr(HookTreeNewHandle, 0);
+
+    TreeNew_SetRedraw(HookTreeNewHandle, FALSE);
+
+    clearallrows();
+
+    WepAddHooks(context);
+
+    TreeNew_NodesStructured(HookTreeNewHandle);
+
+    TreeNew_SetRedraw(HookTreeNewHandle, TRUE);
 }
