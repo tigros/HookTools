@@ -5,4 +5,4 @@ Grab the Process Hacker source and compile it, then add HookTools.vcxproj to Plu
 
 This project is based on https://github.com/jay/gethooks.git
 
-As of 2017/02/22 should work on Windows 8.1/10. 64 bit only. Notice the PH V3 branch also.
+As of 2017/02/22 should work on Windows 8.1/10 but not Creators update/insider preview. 64 bit only. Notice the PH V3 branch also.
