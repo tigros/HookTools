@@ -604,7 +604,7 @@ BEGIN_SORT_FUNCTION(PID)
 }
 END_SORT_FUNCTION
 
-int starttimecmp(HANDLE p1, HANDLE p2)
+int starttimecmp(DWORD p1, DWORD p2)
 {
     LARGE_INTEGER CreationTime1;
     LARGE_INTEGER CreationTime2;
@@ -709,6 +709,7 @@ BOOLEAN NTAPI EtpHookTreeNewCallback(
     //PET_HOOK_NODE node;
 	PWE_HOOK_NODE node;
 	const struct gui *gui;
+    LARGE_INTEGER CreationTime;
 
     switch (Message)
     {
@@ -841,7 +842,6 @@ BOOLEAN NTAPI EtpHookTreeNewCallback(
                 if (!gui)
                     return FALSE;
 
-                LARGE_INTEGER CreationTime;
                 if (GetProcessCreationTime(gui->spi->UniqueProcessId, &CreationTime))
                 {
                     SYSTEMTIME systemTime;
@@ -860,7 +860,6 @@ BOOLEAN NTAPI EtpHookTreeNewCallback(
                 if (!gui)
                     return FALSE;
 
-                LARGE_INTEGER CreationTime;
                 if (GetProcessCreationTime(gui->spi->UniqueProcessId, &CreationTime))
                 {
                     LARGE_INTEGER currentTime;
@@ -1175,8 +1174,6 @@ VOID EtpInitializeHookMenu(
     _In_ ULONG NumberOfHookItems
     )
 {
-    PPH_EMENU_ITEM item;
-
     if (NumberOfHookItems == 0)
     {
         PhSetFlagsAllEMenuItems(Menu, PH_EMENU_DISABLED, PH_EMENU_DISABLED);
@@ -1330,14 +1327,9 @@ void refill()
     PPH_TREENEW_CONTEXT context;
 
     context = (PPH_TREENEW_CONTEXT)GetWindowLongPtr(HookTreeNewHandle, 0);
-
     TreeNew_SetRedraw(HookTreeNewHandle, FALSE);
-
     clearallrows();
-
     WepAddHooks(context);
-
     TreeNew_NodesStructured(HookTreeNewHandle);
-
     TreeNew_SetRedraw(HookTreeNewHandle, TRUE);
 }

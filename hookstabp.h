@@ -2,6 +2,7 @@
 #define HOOKSTABP_H
 
 #include "treenew.h"
+#include "desktop_hook.h"
 
 extern BOOLEAN HookTreeNewCreated;
 extern BOOLEAN WinVerOK;
@@ -185,33 +186,8 @@ VOID NTAPI EtpHookTabFontChangedCallback(
     _In_ PVOID Context
     );
 
-BOOLEAN EtpHookNodeHashtableCompareFunction(
-    _In_ PVOID Entry1,
-    _In_ PVOID Entry2
-    );
-
-ULONG EtpHookNodeHashtableHashFunction(
-    _In_ PVOID Entry
-    );
-
 VOID EtInitializeHookTreeList(
     _In_ HWND hwnd
-    );
-
-PET_HOOK_NODE EtAddHookNode(
-    _In_ PET_HOOK_ITEM HookItem
-    );
-
-PET_HOOK_NODE EtFindHookNode(
-    _In_ PET_HOOK_ITEM HookItem
-    );
-
-VOID EtRemoveHookNode(
-    _In_ PET_HOOK_NODE HookNode
-    );
-
-VOID EtUpdateHookNode(
-    _In_ PET_HOOK_NODE HookNode
     );
 
 BOOLEAN NTAPI EtpHookTreeNewCallback(
@@ -231,9 +207,9 @@ struct hook *EtGetSelectedHookItem(
     );
 
 VOID EtGetSelectedHookItems(
-    _Out_ PET_HOOK_ITEM **HookItems,
+    _Out_ phook **HookItems,
     _Out_ PULONG NumberOfHookItems
-    );
+);
 
 VOID EtDeselectAllHookNodes(
     VOID
@@ -258,48 +234,12 @@ VOID EtHandleHookCommand(
 
 VOID EtpInitializeHookMenu(
     _In_ PPH_EMENU Menu,
-    _In_ PET_HOOK_ITEM *HookItems,
+    _In_ phook *HookItems,
     _In_ ULONG NumberOfHookItems
-    );
+);
 
 VOID EtShowHookContextMenu(
     _In_ POINT Location
-    );
-
-VOID NTAPI EtpHookItemAddedHandler(
-    _In_opt_ PVOID Parameter,
-    _In_opt_ PVOID Context
-    );
-
-VOID NTAPI EtpHookItemModifiedHandler(
-    _In_opt_ PVOID Parameter,
-    _In_opt_ PVOID Context
-    );
-
-VOID NTAPI EtpHookItemRemovedHandler(
-    _In_opt_ PVOID Parameter,
-    _In_opt_ PVOID Context
-    );
-
-VOID NTAPI EtpHookItemsUpdatedHandler(
-    _In_opt_ PVOID Parameter,
-    _In_opt_ PVOID Context
-    );
-
-VOID NTAPI EtpOnHookItemAdded(
-    _In_ PVOID Parameter
-    );
-
-VOID NTAPI EtpOnHookItemModified(
-    _In_ PVOID Parameter
-    );
-
-VOID NTAPI EtpOnHookItemRemoved(
-    _In_ PVOID Parameter
-    );
-
-VOID NTAPI EtpOnHookItemsUpdated(
-    _In_ PVOID Parameter
     );
 
 VOID EtWriteDiskList(
