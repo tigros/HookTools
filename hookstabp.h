@@ -198,10 +198,6 @@ BOOLEAN NTAPI EtpHookTreeNewCallback(
     _In_opt_ PVOID Context
     );
 
-PPH_STRING EtpGetHookItemProcessName(
-    _In_ PET_HOOK_ITEM HookItem
-    );
-
 struct hook *EtGetSelectedHookItem(
     VOID
     );

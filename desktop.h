@@ -31,7 +31,6 @@ along with GetHooks.  If not, see <http://www.gnu.org/licenses/>.
 extern "C" {
 #endif
 
-
 /** This is the info needed for each item in the desktop list.
 Each item has desktop heap information and the thread attached to that desktop.
 All members are valid regardless of desktop list type.

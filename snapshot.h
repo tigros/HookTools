@@ -86,6 +86,7 @@ struct gui
 	members using a pointer to SYSTEM_THREAD_INFORMATION.
 	*/
 	SYSTEM_THREAD_INFORMATION *sti;
+
 };
 
 

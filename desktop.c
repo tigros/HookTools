@@ -288,12 +288,11 @@ static int attach(
 	ulClientDelta is apparently declared as a ULONG but is it a ULONG_PTR for x64? hm
 	*/
 	d->pvClientDelta = *(void **)( (char *)d->pvWin32ClientInfo + offsetof_ulClientDelta );
-	
-	
+
 	if( !d->pvClientDelta
 		|| !d->pDeskInfo->pvDesktopBase 
 		|| !d->pDeskInfo->pvDesktopLimit 
-		|| ( d->pDeskInfo->pvDesktopBase >= d->pDeskInfo->pvDesktopLimit )
+		|| ( d->pDeskInfo->pvDesktopBase >= d->pDeskInfo->pvDesktopLimit)
 		|| ( d->pvClientDelta > d->pDeskInfo->pvDesktopBase ) 
 	)
 	{
@@ -307,10 +306,12 @@ static int attach(
 		}
 
         PhShowMessage(NULL, MB_ICONERROR | MB_OK, L"HookTools does not yet support this version of Windows!");
+
 		goto fail;
 	}
 	
 	WinVerOK = TRUE;
+
 	return 1;
 	
 fail:
