@@ -480,13 +480,21 @@ VOID EtRemoveHookNode(
     PWE_HOOK_NODE node2 = *(PWE_HOOK_NODE *)_elem2; \
     phook hookItem1 = &node1->ahook; \
     phook hookItem2 = &node2->ahook; \
-    int sortResult = 0;
+    int sortResult = 0; \
+    if (!hookItem1->processItem && hookItem2->processItem) \
+        sortResult = -1; \
+    else if (hookItem1->processItem && !hookItem2->processItem) \
+        sortResult = 1;
 
 #define END_SORT_FUNCTION \
     if (sortResult == 0) \
 	{ \
-		if (hookItem1->processItem && hookItem2->processItem) { \
-        sortResult = PhCompareString(hookItem1->processItem->ProcessName, hookItem2->processItem->ProcessName, TRUE); } \
+        if (!hookItem1->processItem && hookItem2->processItem) \
+            sortResult = -1; \
+        else if (hookItem1->processItem && !hookItem2->processItem) \
+            sortResult = 1; \
+        else if (hookItem1->processItem && hookItem2->processItem) \
+            sortResult = PhCompareString(hookItem1->processItem->ProcessName, hookItem2->processItem->ProcessName, TRUE); \
 		if (sortResult == 0) \
 		{ \
 			const unsigned index1 = (unsigned)(hookItem1->object.iHook + 1); \
@@ -529,37 +537,29 @@ END_SORT_FUNCTION
 
 BEGIN_SORT_FUNCTION(Process)
 {
-	if (hookItem1->processItem && hookItem2->processItem)
-	{
+    if (hookItem1->processItem && hookItem2->processItem)
 		sortResult = PhCompareString(hookItem1->processItem->ProcessName, hookItem2->processItem->ProcessName, TRUE);
-	}
 }
 END_SORT_FUNCTION
 
 BEGIN_SORT_FUNCTION(Path)
 {
-	if (hookItem1->processItem && hookItem2->processItem)
-	{
+    if (hookItem1->processItem && hookItem2->processItem)
         sortResult = PhCompareString(hookItem1->processItem->FileName, hookItem2->processItem->FileName, TRUE);
-	}
 }
 END_SORT_FUNCTION
 
 BEGIN_SORT_FUNCTION(CommandLine)
 {
     if (hookItem1->processItem && hookItem2->processItem)
-    {
         sortResult = PhCompareString(hookItem1->processItem->CommandLine, hookItem2->processItem->CommandLine, TRUE);
-    }
 }
 END_SORT_FUNCTION
 
 BEGIN_SORT_FUNCTION(PID)
 {
     if (hookItem1->processItem && hookItem2->processItem)
-	{
 		sortResult = uint64cmp(hookItem1->processItem->ProcessId, hookItem2->processItem->ProcessId);
-	}
 }
 END_SORT_FUNCTION
 
@@ -571,18 +571,14 @@ int starttimecmp(phook h1, phook h2)
 BEGIN_SORT_FUNCTION(StartTime)
 {
     if (hookItem1->processItem && hookItem2->processItem)
-    {
         sortResult = starttimecmp(hookItem1, hookItem2);
-    }
 }
 END_SORT_FUNCTION
 
 BEGIN_SORT_FUNCTION(RelativeStartTime)
 {
     if (hookItem1->processItem && hookItem2->processItem)
-    {
         sortResult = -starttimecmp(hookItem1, hookItem2);
-    }
 }
 END_SORT_FUNCTION
 
