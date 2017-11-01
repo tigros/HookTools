@@ -85,8 +85,6 @@ typedef struct _WE_HOOK_NODE
 	PH_STRINGREF TextCache[WEWNTLC_MAXIMUM];
 
 	PPH_STRING flagstext;
-	PPH_STRING pidtext;
-	PPH_STRING pidpath;
     PPH_STRING StartTimeText;
     PPH_STRING RelativeStartTimeText;
 
@@ -282,6 +280,11 @@ VOID WepFillHookInfo(
 	Node->ahook.origin = hook->origin;
 	Node->ahook.owner = hook->owner;
 	Node->ahook.target = hook->target;
+
+    if (Node->ahook.origin)
+        Node->ahook.processItem = PhReferenceProcessItem(Node->ahook.origin->spi->UniqueProcessId);
+    else
+        Node->ahook.processItem = NULL;
 }
 
 VOID WepAddChildHookNode(
@@ -298,19 +301,6 @@ VOID WepAddChildHookNode(
 	
 	if (FilterSupport.NodeList)
 		childNode->Node.Visible = PhApplyTreeNewFiltersToNode(&FilterSupport, &childNode->Node);
-}
-
-BOOL GetProcessCreationTime(DWORD dwProcessId, LPFILETIME CreationTime)
-{
-    BOOL bResult = FALSE;
-    HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, dwProcessId);
-    if (hProcess)
-    {
-        FILETIME Ignore;
-        bResult = GetProcessTimes(hProcess, CreationTime, &Ignore, &Ignore, &Ignore);
-        CloseHandle(hProcess);
-    }
-    return bResult;
 }
 
 VOID WepAddHooks(
@@ -360,6 +350,7 @@ VOID EtInitializeHookTreeList(
     PhAddTreeNewColumn(hwnd, ETHKTNC_RELATIVESTARTTIME, FALSE, L"Relative start time", 180, PH_ALIGN_LEFT, 4, 0);
 	PhAddTreeNewColumn(hwnd, ETHKTNC_PID, TRUE, L"PID", 100, PH_ALIGN_RIGHT, 5, DT_RIGHT);
 	PhAddTreeNewColumn(hwnd, ETHKTNC_FLAGS, TRUE, L"Flags", 800, PH_ALIGN_LEFT, 6, 0);
+    PhAddTreeNewColumn(hwnd, ETHKTNC_COMMANDLINE, TRUE, L"Command Line", 700, PH_ALIGN_LEFT, 7, DT_PATH_ELLIPSIS);
 
 	TreeNew_SetRedraw(hwnd, TRUE);
 
@@ -427,23 +418,12 @@ VOID EtRemoveHookNode(
         PhRemoveItemList(HookNodeList, index);
 
     if (HookNode->flagstext) PhDereferenceObject(HookNode->flagstext);
-    if (HookNode->pidpath) PhDereferenceObject(HookNode->pidpath);
-    if (HookNode->pidtext) PhDereferenceObject(HookNode->pidtext);
     if (HookNode->StartTimeText) PhDereferenceObject(HookNode->StartTimeText);
     if (HookNode->RelativeStartTimeText) PhDereferenceObject(HookNode->RelativeStartTimeText);
 
+    if (HookNode->ahook.processItem) PhDereferenceObject(HookNode->ahook.processItem);
+
     PhFree(HookNode);
-}
-
-void getfullpath(TCHAR *filename, HANDLE pid)
-{
-	HANDLE processHandle = NULL;
-
-	processHandle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
-	if (processHandle != NULL) {
-		GetModuleFileNameEx(processHandle, NULL, filename, MAX_PATH);
-		CloseHandle(processHandle);
-	}
 }
 
 #define SORT_FUNCTION(Column) EtpHookTreeNewCompare##Column
@@ -457,19 +437,21 @@ void getfullpath(TCHAR *filename, HANDLE pid)
     PWE_HOOK_NODE node2 = *(PWE_HOOK_NODE *)_elem2; \
     phook hookItem1 = &node1->ahook; \
     phook hookItem2 = &node2->ahook; \
-    int sortResult = 0;
+    int sortResult = 0; \
+    if (!hookItem1->processItem && hookItem2->processItem) \
+        sortResult = -1; \
+    else if (hookItem1->processItem && !hookItem2->processItem) \
+        sortResult = 1;
 
 #define END_SORT_FUNCTION \
     if (sortResult == 0) \
 	{ \
-		PPH_STRING p1; \
-		PPH_STRING p2; \
-		if (hookItem1->origin && hookItem2->origin) { \
-		p1 = PhFormatString(L"%s", hookItem1->origin->spi->ImageName.Buffer); \
-		p2 = PhFormatString(L"%s", hookItem2->origin->spi->ImageName.Buffer); \
-		sortResult = PhCompareString(p1, p2, TRUE); \
-		PhDereferenceObject(p1); \
-		PhDereferenceObject(p2); } \
+        if (!hookItem1->processItem && hookItem2->processItem) \
+            sortResult = -1; \
+        else if (hookItem1->processItem && !hookItem2->processItem) \
+            sortResult = 1; \
+        else if (hookItem1->processItem && hookItem2->processItem) \
+            sortResult = PhCompareString(hookItem1->processItem->ProcessName, hookItem2->processItem->ProcessName, TRUE); \
 		if (sortResult == 0) \
 		{ \
 			const unsigned index1 = (unsigned)(hookItem1->object.iHook + 1); \
@@ -512,83 +494,48 @@ END_SORT_FUNCTION
 
 BEGIN_SORT_FUNCTION(Process)
 {
-	PPH_STRING s1;
-	PPH_STRING s2;
-
-	if (hookItem1->origin && hookItem2->origin)
-	{
-		s1 = PhFormatString(L"%s", hookItem1->origin->spi->ImageName.Buffer);
-		s2 = PhFormatString(L"%s", hookItem2->origin->spi->ImageName.Buffer);
-
-		sortResult = PhCompareString(s1, s2, TRUE);
-
-		PhDereferenceObject(s1);
-		PhDereferenceObject(s2);
-	}
+    if (hookItem1->processItem && hookItem2->processItem)
+		sortResult = PhCompareString(hookItem1->processItem->ProcessName, hookItem2->processItem->ProcessName, TRUE);
 }
 END_SORT_FUNCTION
 
 BEGIN_SORT_FUNCTION(Path)
 {
-	PPH_STRING s1;
-	PPH_STRING s2;
+    if (hookItem1->processItem && hookItem2->processItem)
+        sortResult = PhCompareString(hookItem1->processItem->FileName, hookItem2->processItem->FileName, TRUE);
+}
+END_SORT_FUNCTION
 
-	if (hookItem1->origin && hookItem2->origin)
-	{
-		TCHAR filename1[MAX_PATH];
-		TCHAR filename2[MAX_PATH];
-
-		getfullpath(filename1, hookItem1->origin->spi->UniqueProcessId);
-		getfullpath(filename2, hookItem2->origin->spi->UniqueProcessId);
-
-		s1 = PhFormatString(L"%s", filename1);
-		s2 = PhFormatString(L"%s", filename2);
-
-		sortResult = PhCompareString(s1, s2, TRUE);
-
-		PhDereferenceObject(s1);
-		PhDereferenceObject(s2);
-	}
+BEGIN_SORT_FUNCTION(CommandLine)
+{
+    if (hookItem1->processItem && hookItem2->processItem)
+        sortResult = PhCompareString(hookItem1->processItem->CommandLine, hookItem2->processItem->CommandLine, TRUE);
 }
 END_SORT_FUNCTION
 
 BEGIN_SORT_FUNCTION(PID)
 {
-	if (hookItem1->origin && hookItem2->origin)
-	{
-		sortResult = uint64cmp(hookItem1->origin->spi->UniqueProcessId, hookItem2->origin->spi->UniqueProcessId);
-	}
+    if (hookItem1->processItem && hookItem2->processItem)
+		sortResult = uint64cmp(hookItem1->processItem->ProcessId, hookItem2->processItem->ProcessId);
 }
 END_SORT_FUNCTION
 
-int starttimecmp(HANDLE p1, HANDLE p2)
+int starttimecmp(phook h1, phook h2)
 {
-    LARGE_INTEGER CreationTime1;
-    LARGE_INTEGER CreationTime2;
-    if (GetProcessCreationTime(p1, &CreationTime1) &&
-        GetProcessCreationTime(p2, &CreationTime2))
-    {
-        return int64cmp(CreationTime1.QuadPart, CreationTime2.QuadPart);
-    }
-
-    return 0;
+    return int64cmp(h1->processItem->CreateTime.QuadPart, h2->processItem->CreateTime.QuadPart);
 }
 
 BEGIN_SORT_FUNCTION(StartTime)
 {
-    if (hookItem1->origin && hookItem2->origin)
-    {
-        sortResult = starttimecmp(hookItem1->origin->spi->UniqueProcessId, hookItem2->origin->spi->UniqueProcessId);
-    }
+    if (hookItem1->processItem && hookItem2->processItem)
+        sortResult = starttimecmp(hookItem1, hookItem2);
 }
 END_SORT_FUNCTION
 
 BEGIN_SORT_FUNCTION(RelativeStartTime)
 {
-    if (hookItem1->origin && hookItem2->origin)
-    {
-        sortResult = -starttimecmp(hookItem1->origin->spi->UniqueProcessId, hookItem2->origin->spi->UniqueProcessId);
-    }
+    if (hookItem1->processItem && hookItem2->processItem)
+        sortResult = -starttimecmp(hookItem1, hookItem2);
 }
 END_SORT_FUNCTION
 
@@ -666,6 +613,7 @@ BOOLEAN NTAPI EtpHookTreeNewCallback(
     //PET_HOOK_NODE node;
 	PWE_HOOK_NODE node;
 	const struct gui *gui;
+    SYSTEMTIME systemTime;
 
     switch (Message)
     {
@@ -683,7 +631,8 @@ BOOLEAN NTAPI EtpHookTreeNewCallback(
                     SORT_FUNCTION(FLAGS),
 					SORT_FUNCTION(Path),
                     SORT_FUNCTION(StartTime),
-                    SORT_FUNCTION(RelativeStartTime)
+                    SORT_FUNCTION(RelativeStartTime),
+                    SORT_FUNCTION(CommandLine)
                 };
                 int (__cdecl *sortFunction)(const void *, const void *);
 
@@ -735,48 +684,37 @@ BOOLEAN NTAPI EtpHookTreeNewCallback(
 
 			case ETHKTNC_PID:
 			{
-				gui = hookItem->origin;
-
-				if (!gui)
+                if (!hookItem->processItem)
 					return FALSE;
 
-				PH_FORMAT format;
-				
-				PhInitFormatD(&format, gui->spi->UniqueProcessId);
-				PhMoveReference(&node->pidtext, PhFormat(&format, 1, 0));
-				getCellText->Text = node->pidtext->sr;				
+                PhInitializeStringRef(&getCellText->Text, hookItem->processItem->ProcessIdString);
 			}
             break;
 
 			case ETHKTNC_PROCESS:
 			{
-				gui = hookItem->origin;
-
-				if (gui)
-					PhInitializeStringRef(&getCellText->Text, gui->spi->ImageName.Buffer);
-				else
-					return FALSE;
+                if (!hookItem->processItem)
+                    return FALSE;
+                getCellText->Text = hookItem->processItem->ProcessName->sr;
 			}
 			break;
 
 			case ETHKTNC_PATH:
 			{
-				TCHAR filename[MAX_PATH];
-
-				if (!hookItem->origin)
+				if (!hookItem->processItem)
 					return FALSE;
-
-				getfullpath(filename, hookItem->origin->spi->UniqueProcessId);
-
-				PH_FORMAT format;
-
-				PhInitFormatS(&format, filename);
-				PhMoveReference(&node->pidpath, PhFormat(&format, 1, 0));
-				getCellText->Text = node->pidpath->sr;
-
+				getCellText->Text = hookItem->processItem->FileName->sr;
 			}
             break;
 			
+            case ETHKTNC_COMMANDLINE:
+            {
+                if (!hookItem->processItem)
+                    return FALSE;
+                getCellText->Text = hookItem->processItem->CommandLine->sr;
+            }
+            break;
+
 			case ETHKTNC_FLAGS:
 			{
 				WCHAR buf[255];
@@ -793,42 +731,30 @@ BOOLEAN NTAPI EtpHookTreeNewCallback(
 
             case ETHKTNC_STARTTIME:
             {
-                gui = hookItem->origin;
-
-                if (!gui)
+                if (!hookItem->processItem)
                     return FALSE;
 
-                LARGE_INTEGER CreationTime;
-                if (GetProcessCreationTime(gui->spi->UniqueProcessId, &CreationTime))
-                {
-                    SYSTEMTIME systemTime;
+                PhLargeIntegerToLocalSystemTime(&systemTime, &hookItem->processItem->CreateTime);
+                PhMoveReference(&node->StartTimeText, PhFormatDateTime(&systemTime));
+                getCellText->Text = node->StartTimeText->sr;
 
-                    PhLargeIntegerToLocalSystemTime(&systemTime, &CreationTime);
-                    PhMoveReference(&node->StartTimeText, PhFormatDateTime(&systemTime));
-                    getCellText->Text = node->StartTimeText->sr;
-                }
             }
             break;
 
             case ETHKTNC_RELATIVESTARTTIME:
             {
-                gui = hookItem->origin;
-
-                if (!gui)
+                if (!hookItem->processItem)
                     return FALSE;
 
-                LARGE_INTEGER CreationTime;
-                if (GetProcessCreationTime(gui->spi->UniqueProcessId, &CreationTime))
-                {
-                    LARGE_INTEGER currentTime;
-                    PPH_STRING startTimeString;
+                LARGE_INTEGER currentTime;
+                PPH_STRING startTimeString;
 
-                    PhQuerySystemTime(&currentTime);
-                    startTimeString = PhFormatTimeSpanRelative(currentTime.QuadPart - CreationTime.QuadPart);
-                    PhMoveReference(&node->RelativeStartTimeText, PhConcatStrings2(startTimeString->Buffer, L" ago"));
-                    PhDereferenceObject(startTimeString);
-                    getCellText->Text = node->RelativeStartTimeText->sr;
-                } 
+                PhQuerySystemTime(&currentTime);
+                startTimeString = PhFormatTimeSpanRelative(currentTime.QuadPart - hookItem->processItem->CreateTime.QuadPart);
+                PhMoveReference(&node->RelativeStartTimeText, PhConcatStrings2(startTimeString->Buffer, L" ago"));
+                PhDereferenceObject(startTimeString);
+                getCellText->Text = node->RelativeStartTimeText->sr;
+
             }
             break;
 
@@ -899,34 +825,10 @@ BOOLEAN NTAPI EtpHookTreeNewCallback(
         }
         return TRUE;
     case TreeNewDestroying:
-        {
-            EtSaveSettingsHookTreeList();
-        }
         return TRUE;
     }
 
     return FALSE;
-}
-
-PPH_STRING EtpGetHookItemProcessName(
-    _In_ PET_HOOK_ITEM HookItem
-    )
-{
-    PH_FORMAT format[4];
-
-    if (!HookItem->ProcessId)
-        return PhCreateString(L"No Process");
-
-    PhInitFormatS(&format[1], L" (");
-    PhInitFormatU(&format[2], HandleToUlong(HookItem->ProcessId));
-    PhInitFormatC(&format[3], ')');
-
-    if (HookItem->ProcessName)
-        PhInitFormatSR(&format[0], HookItem->ProcessName->sr);
-    else
-        PhInitFormatS(&format[0], L"Unknown Process");
-
-    return PhFormat(format, 4, 96);
 }
 
 phook EtGetSelectedHookItem(
@@ -955,7 +857,6 @@ VOID EtGetSelectedHookItems(
     _Out_ PULONG NumberOfHookItems
     )
 {
-	
     PPH_LIST list;
     ULONG i;
 
@@ -1037,7 +938,6 @@ VOID EtHandleHookCommand(
     _In_ ULONG Id
     )
 {
-	TCHAR filename[MAX_PATH];
 	phook hookItem;
 
     switch (Id)
@@ -1047,16 +947,13 @@ VOID EtHandleHookCommand(
             hookItem = EtGetSelectedHookItem();
             PPH_PROCESS_NODE processNode;
 
-			if (hookItem && hookItem->origin)
+			if (hookItem && hookItem->processItem)
             {
-				if (hookItem->origin->spi->UniqueProcessId)
+                // Check if this is really the process that we want, or if it's just a case of PID re-use.
+				if (processNode = PhFindProcessNode(hookItem->processItem->ProcessId))
                 {
-                    // Check if this is really the process that we want, or if it's just a case of PID re-use.
-					if (processNode = PhFindProcessNode(hookItem->origin->spi->UniqueProcessId))
-                    {
-                        ProcessHacker_SelectTabPage(PhMainWndHandle, 0);
-                        PhSelectAndEnsureVisibleProcessNode(processNode);
-                    }
+                    ProcessHacker_SelectTabPage(PhMainWndHandle, 0);
+                    PhSelectAndEnsureVisibleProcessNode(processNode);
                 }
             }
         }
@@ -1100,10 +997,9 @@ VOID EtHandleHookCommand(
         {
 			hookItem = EtGetSelectedHookItem();
 
-			if (hookItem && hookItem->origin)
+			if (hookItem && hookItem->processItem)
             {
-				getfullpath(filename, hookItem->origin->spi->UniqueProcessId);
-				PhShellExploreFile(PhMainWndHandle, filename);  
+				PhShellExploreFile(PhMainWndHandle, hookItem->processItem->FileName->Buffer);
             }
         }
         break;
@@ -1116,10 +1012,9 @@ VOID EtHandleHookCommand(
         {
             hookItem = EtGetSelectedHookItem();
 
-			if (hookItem && hookItem->origin)
+			if (hookItem && hookItem->processItem)
             {
-				getfullpath(filename, hookItem->origin->spi->UniqueProcessId);
-                PhShellProperties(PhMainWndHandle, filename);
+                PhShellProperties(PhMainWndHandle, hookItem->processItem->FileName->Buffer);
             }
         }
         break;
@@ -1132,8 +1027,6 @@ VOID EtpInitializeHookMenu(
     _In_ ULONG NumberOfHookItems
     )
 {
-    PPH_EMENU_ITEM item;
-
     if (NumberOfHookItems == 0)
     {
         PhSetFlagsAllEMenuItems(Menu, PH_EMENU_DISABLED, PH_EMENU_DISABLED);
@@ -1209,12 +1102,12 @@ static BOOLEAN NTAPI EtpSearchHookListFilterCallback(
     if (PhIsNullOrEmptyString(ToolStatusInterface->GetSearchboxText()))
         return TRUE;
 
-    if (!hookItem || !hookItem->origin)
+    if (!hookItem || !hookItem->processItem)
         return FALSE;
 
-    PhInitializeStringRef(&sr, hookItem->origin->spi->ImageName.Buffer);
+	PhInitializeStringRef(&sr, hookItem->processItem->FileName->Buffer);
 
-    if (wordMatch(&sr))
+	if (wordMatch(&sr))
         return TRUE;
 
     return FALSE;
@@ -1287,14 +1180,9 @@ void refill()
     PPH_TREENEW_CONTEXT context;
 
     context = (PPH_TREENEW_CONTEXT)GetWindowLongPtr(HookTreeNewHandle, 0);
-
     TreeNew_SetRedraw(HookTreeNewHandle, FALSE);
-
     clearallrows();
-
     WepAddHooks(context);
-
     TreeNew_NodesStructured(HookTreeNewHandle);
-
     TreeNew_SetRedraw(HookTreeNewHandle, TRUE);
 }

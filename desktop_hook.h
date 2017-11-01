@@ -32,7 +32,7 @@ along with GetHooks.  If not, see <http://www.gnu.org/licenses/>.
 /* snapshot store (system process info, gui threads, desktop hooks) */
 #include "snapshot.h"
 
-
+#include "exttools.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,6 +70,8 @@ struct hook
 	
 	/* the thread that's hooked */
 	const struct gui *target;
+
+    PPH_PROCESS_ITEM processItem;
 };
 
 typedef struct hook *phook;
