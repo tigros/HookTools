@@ -8,6 +8,22 @@ extern BOOLEAN HookTreeNewCreated;
 extern BOOLEAN WinVerOK;
 extern HWND HookTreeNewHandle;
 
+#define WEWNTLC_MAXIMUM 4
+
+typedef struct _WE_HOOK_NODE
+{
+	PH_TREENEW_NODE Node;
+
+	PH_STRINGREF TextCache[WEWNTLC_MAXIMUM];
+
+	PPH_STRING flagstext;
+	PPH_STRING StartTimeText;
+	PPH_STRING RelativeStartTimeText;
+
+	struct hook ahook;
+
+} WE_HOOK_NODE, *PWE_HOOK_NODE;
+
 typedef struct _PH_TREENEW_CONTEXT
 {
 	HWND Handle;
@@ -212,7 +228,7 @@ VOID EtDeselectAllHookNodes(
     );
 
 VOID EtSelectAndEnsureVisibleHookNode(
-    _In_ PET_HOOK_NODE HookNode
+    _In_ PWE_HOOK_NODE HookNode
     );
 
 VOID EtCopyHookList(
@@ -237,11 +253,6 @@ VOID EtpInitializeHookMenu(
 VOID EtShowHookContextMenu(
     _In_ POINT Location
     );
-
-VOID EtWriteDiskList(
-	_Inout_ PPH_FILE_STREAM FileStream,
-	_In_ ULONG Mode
-);
 
 VOID NTAPI EtpSearchChangedHandler(
     _In_opt_ PVOID Parameter,

@@ -31,18 +31,6 @@ INT_PTR CALLBACK OptionsDlgProc(
     _In_ LPARAM lParam
     );
 
-VOID EtShowOptionsDialog(
-    _In_ HWND ParentWindowHandle
-    )
-{
-    DialogBox(
-        PluginInstance->DllBase,
-        MAKEINTRESOURCE(IDD_OPTIONS),
-        ParentWindowHandle,
-        OptionsDlgProc
-        );
-}
-
 INT_PTR CALLBACK OptionsDlgProc(
     _In_ HWND hwndDlg,
     _In_ UINT uMsg,

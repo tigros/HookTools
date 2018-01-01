@@ -41,79 +41,10 @@ static PH_CALLBACK_REGISTRATION HookItemAddedRegistration;
 static PH_CALLBACK_REGISTRATION HookItemModifiedRegistration;
 static PH_CALLBACK_REGISTRATION HookItemRemovedRegistration;
 static PH_CALLBACK_REGISTRATION HookItemsUpdatedRegistration;
-static BOOLEAN HookNeedsRedraw = FALSE;
 
 static PH_TN_FILTER_SUPPORT FilterSupport;
 static PTOOLSTATUS_INTERFACE ToolStatusInterface;
 static PH_CALLBACK_REGISTRATION SearchChangedRegistration;
-
-#define WEWNTLC_MAXIMUM 4
-
-typedef enum _WE_HOOK_SELECTOR_TYPE
-{
-	WeWindowSelectorAll,
-	WeWindowSelectorProcess,
-	WeWindowSelectorThread,
-	WeWindowSelectorDesktop
-} WE_HOOK_SELECTOR_TYPE;
-
-typedef struct _WE_HOOK_SELECTOR
-{
-	WE_HOOK_SELECTOR_TYPE Type;
-	union
-	{
-		struct
-		{
-			HANDLE ProcessId;
-		} Process;
-		struct
-		{
-			HANDLE ThreadId;
-		} Thread;
-		struct
-		{
-			PPH_STRING DesktopName;
-		} Desktop;
-	};
-} WE_HOOK_SELECTOR, *PWE_HOOK_SELECTOR;
-
-typedef struct _WE_HOOK_NODE
-{
-	PH_TREENEW_NODE Node;
-
-	PH_STRINGREF TextCache[WEWNTLC_MAXIMUM];
-
-	PPH_STRING flagstext;
-    PPH_STRING StartTimeText;
-    PPH_STRING RelativeStartTimeText;
-
-	struct hook ahook;
-
-} WE_HOOK_NODE, *PWE_HOOK_NODE;
-
-typedef struct _WE_HOOK_TREE_CONTEXT
-{
-	HWND ParentWindowHandle;
-	HWND TreeNewHandle;
-	ULONG TreeNewSortColumn;
-	PH_SORT_ORDER TreeNewSortOrder;
-
-	PPH_HASHTABLE NodeHashtable;
-	PPH_LIST NodeList;
-	PPH_LIST NodeRootList;
-} WE_HOOK_TREE_CONTEXT, *PWE_HOOK_TREE_CONTEXT;
-
-typedef struct _HOOKS_CONTEXT
-{
-	HWND TreeNewHandle;
-	WE_HOOK_TREE_CONTEXT TreeContext;
-	WE_HOOK_SELECTOR Selector;
-
-	PH_LAYOUT_MANAGER LayoutManager;
-
-	HWND HighlightingWindow;
-	ULONG HighlightingWindowCount;
-} HOOKS_CONTEXT, *PHOOKS_CONTEXT;
 
 VOID EtInitializeHooksTab(
     VOID
@@ -217,7 +148,7 @@ BOOLEAN NTAPI EtpHookPageCallback(
 	{
 		PPH_MAIN_TAB_PAGE_EXPORT_CONTENT exportContent = Parameter1;
 
-		EtWriteDiskList(exportContent->FileStream, exportContent->Mode);
+		EtWriteHookList(exportContent->FileStream, exportContent->Mode);
 	}
 	return TRUE;
 	case MainTabPageFontChanged:
@@ -247,7 +178,7 @@ VOID NTAPI EtpHookTabSelectionChangedCallback(
     }
 }
 
-VOID EtWriteDiskList(
+VOID EtWriteHookList(
 	_Inout_ PPH_FILE_STREAM FileStream,
 	_In_ ULONG Mode
 	)
@@ -280,7 +211,7 @@ VOID NTAPI EtpHookTabSaveContentCallback(
 	PPH_FILE_STREAM fileStream = Parameter1;
 	ULONG mode = PtrToUlong(Parameter2);
 
-	EtWriteDiskList(fileStream, mode);
+	EtWriteHookList(fileStream, mode);
 }
 
 VOID NTAPI EtpHookTabFontChangedCallback(
@@ -391,13 +322,13 @@ VOID EtInitializeHookTreeList(
 	// Default columns
 	
 	PhAddTreeNewColumn(hwnd, ETHKTNC_TYPE, TRUE, L"Type", 130, PH_ALIGN_LEFT, 0, 0);
-	PhAddTreeNewColumn(hwnd, ETHKTNC_PROCESS, TRUE, L"Process", 130, PH_ALIGN_LEFT, 1, DT_PATH_ELLIPSIS);
-	PhAddTreeNewColumn(hwnd, ETHKTNC_PATH, TRUE, L"Path", 700, PH_ALIGN_LEFT, 2, DT_PATH_ELLIPSIS);
+	PhAddTreeNewColumn(hwnd, ETHKTNC_PROCESS, TRUE, L"Process", 130, PH_ALIGN_LEFT, 1, DT_END_ELLIPSIS);
+	PhAddTreeNewColumn(hwnd, ETHKTNC_PATH, TRUE, L"Path", 700, PH_ALIGN_LEFT, 2, DT_END_ELLIPSIS);
     PhAddTreeNewColumnEx(hwnd, ETHKTNC_STARTTIME, TRUE, L"Start time", 100, PH_ALIGN_LEFT, 3, 0, TRUE);
     PhAddTreeNewColumn(hwnd, ETHKTNC_RELATIVESTARTTIME, FALSE, L"Relative start time", 180, PH_ALIGN_LEFT, 4, 0);
 	PhAddTreeNewColumn(hwnd, ETHKTNC_PID, TRUE, L"PID", 100, PH_ALIGN_RIGHT, 5, DT_RIGHT);
 	PhAddTreeNewColumn(hwnd, ETHKTNC_FLAGS, TRUE, L"Flags", 800, PH_ALIGN_LEFT, 6, 0);
-    PhAddTreeNewColumn(hwnd, ETHKTNC_COMMANDLINE, TRUE, L"Command Line", 700, PH_ALIGN_LEFT, 7, DT_PATH_ELLIPSIS);
+    PhAddTreeNewColumn(hwnd, ETHKTNC_COMMANDLINE, TRUE, L"Command Line", 700, PH_ALIGN_LEFT, 7, DT_END_ELLIPSIS);
 
 	TreeNew_SetRedraw(hwnd, TRUE);
 
@@ -929,7 +860,7 @@ VOID EtDeselectAllHookNodes(
 }
 
 VOID EtSelectAndEnsureVisibleHookNode(
-    _In_ PET_HOOK_NODE HookNode
+    _In_ PWE_HOOK_NODE HookNode
     )
 {
     EtDeselectAllHookNodes();
@@ -952,29 +883,6 @@ VOID EtCopyHookList(
     text = PhGetTreeNewText(HookTreeNewHandle, 0);
     PhSetClipboardString(HookTreeNewHandle, &text->sr);
     PhDereferenceObject(text);
-}
-
-VOID EtWriteHookList(
-    _Inout_ PPH_FILE_STREAM FileStream,
-    _In_ ULONG Mode
-    )
-{
-    PPH_LIST lines;
-    ULONG i;
-
-    lines = PhGetGenericTreeNewLines(HookTreeNewHandle, Mode);
-
-    for (i = 0; i < lines->Count; i++)
-    {
-        PPH_STRING line;
-
-        line = lines->Items[i];
-        PhWriteStringAsUtf8FileStream(FileStream, &line->sr);
-        PhDereferenceObject(line);
-        PhWriteStringAsUtf8FileStream2(FileStream, L"\r\n");
-    }
-
-    PhDereferenceObject(lines);
 }
 
 VOID EtHandleHookCommand(
@@ -1165,7 +1073,7 @@ VOID NTAPI EtpToolStatusActivateContent(
     if (Select)
     {
         if (TreeNew_GetFlatNodeCount(HookTreeNewHandle) > 0)
-            EtSelectAndEnsureVisibleHookNode((PET_HOOK_NODE)TreeNew_GetFlatNode(HookTreeNewHandle, 0));
+            EtSelectAndEnsureVisibleHookNode((PWE_HOOK_NODE)TreeNew_GetFlatNode(HookTreeNewHandle, 0));
     }
 }
 

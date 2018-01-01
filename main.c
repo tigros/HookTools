@@ -22,6 +22,8 @@
 
 #include "gethooks.h"
 #include "hookstabp.h"
+#include "phappresource.h"
+#include <windowsx.h>
 
 VOID NTAPI UnloadCallback(
     _In_opt_ PVOID Parameter,
@@ -44,6 +46,38 @@ PH_CALLBACK_REGISTRATION MainWindowShowingCallbackRegistration;
 PH_CALLBACK_REGISTRATION ProcessesUpdatedCallbackRegistration;
 
 static HANDLE ModuleProcessId;
+
+LRESULT CALLBACK MainWndPluginSubclassProc(
+    _In_ HWND hWnd,
+    _In_ UINT uMsg,
+    _In_ WPARAM wParam,
+    _In_ LPARAM lParam,
+    _In_ UINT_PTR uIdSubclass,
+    _In_ ULONG_PTR dwRefData
+)
+{
+    switch (uMsg)
+    {
+    case WM_NCDESTROY:
+        RemoveWindowSubclass(hWnd, MainWndPluginSubclassProc, uIdSubclass);
+        break;
+    case WM_COMMAND:
+    {
+        switch (GET_WM_COMMAND_ID(wParam, lParam))
+        {
+        case PHAPP_ID_VIEW_REFRESH:
+            if (HookTreeNewCreated && WinVerOK)
+            {
+                refill();
+            }
+            break;
+        }
+    }
+    break;
+    }
+
+    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+}
 
 LOGICAL DllMain(
     _In_ HINSTANCE Instance,
@@ -94,7 +128,7 @@ LOGICAL DllMain(
                     { IntegerPairSettingType, SETTING_NAME_HOOK_TREE_LIST_SORT, L"2,1" } // 4, DescendingSortOrder
                 };
 
-                PhAddSettings(settings, sizeof(settings) / sizeof(PH_SETTING_CREATE));
+                PhAddSettings(settings, sizeof(settings) / sizeof(PH_SETTING_CREATE)); 
             }
         }
         break;
@@ -116,6 +150,7 @@ VOID NTAPI MainWindowShowingCallback(
     _In_opt_ PVOID Context
     )
 {
+    BOOL res = SetWindowSubclass(PhMainWndHandle, MainWndPluginSubclassProc, 0, 0);
 	EtInitializeHooksTab();
 }
 
